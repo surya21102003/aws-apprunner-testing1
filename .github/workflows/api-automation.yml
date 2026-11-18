@@ -1,0 +1,83 @@
+
+name: Node.js API Automation Testing
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'server.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/api-automation.yml'
+
+  workflow_dispatch:
+
+jobs:
+  api-testing:
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # 1. Download Node.js repository
+      - name: Checkout Node.js API
+        uses: actions/checkout@v4
+
+      # 2. Install Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # 3. Install Node.js dependencies
+      - name: Install API Dependencies
+        run: npm ci
+
+      # 4. Download your Playwright repository
+      - name: Checkout Playwright Tests
+        uses: actions/checkout@v4
+        with:
+          repository: surya21102003/playwright-api-testing
+          ref: main
+          path: playwright-tests
+
+      # 5. Install Playwright dependencies
+      - name: Install Playwright Dependencies
+        working-directory: playwright-tests
+        run: npm ci
+
+      # 6. Start Node.js server
+      - name: Start Node.js API
+        run: |
+          npm start > server.log 2>&1 &
+
+      # 7. Check API server
+      - name: Wait for API
+        run: |
+          for i in {1..30}; do
+            if curl -fsS http://localhost:3000/health; then
+              echo "API server started successfully"
+              exit 0
+            fi
+            sleep 1
+          done
+
+          echo "API server failed to start"
+          cat server.log
+          exit 1
+
+      # 8. Execute Playwright automation
+      - name: Run API Automation Tests
+        working-directory: playwright-tests
+        env:
+          API_URL: http://localhost:3000
+        run: npx playwright test
+
+      # 9. Save HTML report
+      - name: Upload Playwright Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-api-report
+          path: playwright-tests/playwright-report/
+          retention-days: 7
