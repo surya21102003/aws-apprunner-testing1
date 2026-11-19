@@ -4,7 +4,7 @@ const app = express();
 // Middleware
 app.use(express.json());
 
-//demo node js app
+//demo app
 
 // Port (important for AWS App Runner)
 const PORT = process.env.PORT || 3000;
